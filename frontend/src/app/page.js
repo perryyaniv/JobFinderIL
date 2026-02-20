@@ -12,6 +12,7 @@ import ThemeToggle from '../components/ThemeToggle';
 import Pagination from '../components/Pagination';
 import ActiveFilters from '../components/ActiveFilters';
 import ScrapersDashboard from '../components/ScrapersDashboard';
+import LoginScreen from '../components/LoginScreen';
 import { Briefcase, SlidersHorizontal, X, Radio } from 'lucide-react';
 
 export default function HomePage() {
@@ -28,6 +29,11 @@ export default function HomePage() {
     const [selectedJob, setSelectedJob] = useState(null);
     const [sidebarOpen, setSidebarOpen] = useState(false);
     const [activeTab, setActiveTab] = useState('jobs');
+    const [appReady, setAppReady] = useState(false);
+
+    if (!appReady) {
+        return <LoginScreen onReady={() => setAppReady(true)} />;
+    }
 
     return (
         <>

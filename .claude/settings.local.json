@@ -4,7 +4,8 @@
       "Bash(wc:*)",
       "Bash(npm install:*)",
       "Bash(curl:*)",
-      "Bash(npx jest:*)"
+      "Bash(npx jest:*)",
+      "Bash(npm run build:*)"
     ]
   }
 }
