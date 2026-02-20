@@ -1,0 +1,16 @@
+services:
+  - type: web
+    name: jobfinder-api
+    runtime: node
+    plan: free
+    buildCommand: npm install
+    startCommand: node src/server.js
+    envVars:
+      - key: DATABASE_URL
+        sync: false # Set manually in Render dashboard (MongoDB Atlas connection string)
+      - key: ALLOWED_ORIGINS
+        value: https://jobfinder-il.vercel.app
+      - key: SCRAPE_INTERVAL_HOURS
+        value: 6
+      - key: NODE_ENV
+        value: production
