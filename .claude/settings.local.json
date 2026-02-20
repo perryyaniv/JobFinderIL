@@ -5,7 +5,8 @@
       "Bash(npm install:*)",
       "Bash(curl:*)",
       "Bash(npx jest:*)",
-      "Bash(npm run build:*)"
+      "Bash(npm run build:*)",
+      "Bash(npm run test:scrapers:*)"
     ]
   }
 }

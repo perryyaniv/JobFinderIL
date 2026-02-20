@@ -19,6 +19,7 @@ class EthosiaScraper extends BaseScraper {
 
         const browser = await puppeteer.launch({
             headless: 'new',
+            ignoreHTTPSErrors: true,
             args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
         });
 
@@ -32,7 +33,12 @@ class EthosiaScraper extends BaseScraper {
                 const url = `${this.baseUrl}/jobs/?page=${pageNum}`;
                 logger.debug(`Ethosia: Fetching page ${pageNum}`);
 
-                await page.goto(url, { waitUntil: 'networkidle2', timeout: 30000 });
+                try {
+                    await page.goto(url, { waitUntil: 'networkidle2', timeout: 30000 });
+                } catch (navError) {
+                    logger.warn(`Ethosia: Navigation failed for page ${pageNum}: ${navError.message}`);
+                    break;
+                }
                 await page.waitForSelector('[class*="job"], [class*="position"], .card', { timeout: 10000 }).catch(() => { });
 
                 const pageJobs = await page.evaluate(() => {
