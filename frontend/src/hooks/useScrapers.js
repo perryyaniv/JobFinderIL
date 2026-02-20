@@ -49,9 +49,9 @@ export function useScrapers() {
         }
     }, [scrapingInProgress]);
 
-    const triggerScrape = useCallback(async (siteId = null) => {
+    const triggerScrape = useCallback(async (siteId = null, daysBack = null) => {
         try {
-            await api.triggerScrape(siteId);
+            await api.triggerScrape(siteId, daysBack);
             setScrapingInProgress(true);
             setScrapingSiteId(siteId);
             setTimeout(fetchSites, 2000);

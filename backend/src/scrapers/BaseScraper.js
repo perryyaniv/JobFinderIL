@@ -132,10 +132,20 @@ class BaseScraper {
 
     /**
      * Full scrape pipeline: scrape → normalize → deduplicate → save → log.
+     * searchParams.daysBack adjusts maxPages: 1d→3, 7d→5, 30d→10.
      */
     async run(searchParams = {}) {
         const startTime = Date.now();
-        logger.info(`Starting scrape for ${this.siteName}...`);
+        const originalMaxPages = this.maxPages;
+
+        if (searchParams.daysBack) {
+            const days = searchParams.daysBack;
+            if (days <= 1) this.maxPages = 3;
+            else if (days <= 7) this.maxPages = 5;
+            else this.maxPages = 10;
+        }
+
+        logger.info(`Starting scrape for ${this.siteName} (maxPages: ${this.maxPages})...`);
 
         try {
             const rawJobs = await this.scrape(searchParams);
@@ -150,6 +160,7 @@ class BaseScraper {
 
             await this.logScrape('success', normalizedJobs.length, saved, duration);
 
+            this.maxPages = originalMaxPages;
             return {
                 site: this.siteName,
                 status: 'success',
@@ -160,6 +171,7 @@ class BaseScraper {
                 duration,
             };
         } catch (error) {
+            this.maxPages = originalMaxPages;
             const duration = Date.now() - startTime;
             logger.error(`Scrape failed for ${this.siteName}`, { error: error.message, stack: error.stack });
             await this.logScrape('failed', 0, 0, duration, error.message);

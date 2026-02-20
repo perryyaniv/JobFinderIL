@@ -66,8 +66,11 @@ class ApiClient {
     }
 
     // Scrape management
-    async triggerScrape(site = null) {
-        const query = site ? `?site=${site}` : '';
+    async triggerScrape(site = null, daysBack = null) {
+        const params = new URLSearchParams();
+        if (site) params.set('site', site);
+        if (daysBack) params.set('daysBack', daysBack);
+        const query = params.toString() ? `?${params.toString()}` : '';
         return this.request(`/api/scrape/trigger${query}`, { method: 'POST' });
     }
 

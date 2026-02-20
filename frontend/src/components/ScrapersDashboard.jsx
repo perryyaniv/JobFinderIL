@@ -1,10 +1,17 @@
 'use client';
 
+import { useState } from 'react';
 import { useScrapers } from '../hooks/useScrapers';
 import {
     Radio, Play, RefreshCw, Clock, AlertTriangle,
-    CheckCircle2, XCircle, Loader2, Zap, BarChart3,
+    CheckCircle2, XCircle, Loader2, Zap, BarChart3, Calendar,
 } from 'lucide-react';
+
+const DAYS_OPTIONS = [
+    { value: 1, label: 'יום אחרון' },
+    { value: 7, label: '7 ימים' },
+    { value: 30, label: '30 ימים' },
+];
 
 function formatRelativeTime(dateStr) {
     if (!dateStr) return 'לא רץ אף פעם';
@@ -44,6 +51,7 @@ function StatusIndicator({ status }) {
 
 export default function ScrapersDashboard() {
     const { sites, loading, error, scrapingInProgress, scrapingSiteId, triggerScrape } = useScrapers();
+    const [daysBack, setDaysBack] = useState(7);
 
     const successCount = sites.filter(s => s.status === 'success').length;
     const failedCount = sites.filter(s => s.status === 'failed').length;
@@ -89,23 +97,38 @@ export default function ScrapersDashboard() {
                         ניהול ומעקב אחר 18 סורקי דרושים
                     </p>
                 </div>
-                <button
-                    className="scan-all-btn"
-                    onClick={() => triggerScrape()}
-                    disabled={scrapingInProgress}
-                >
-                    {scrapingInProgress ? (
-                        <>
-                            <Loader2 size={16} className="spin-icon" />
-                            סורק...
-                        </>
-                    ) : (
-                        <>
-                            <Zap size={16} />
-                            סרוק הכל
-                        </>
-                    )}
-                </button>
+                <div className="scrapers-actions">
+                    <div className="days-selector">
+                        <Calendar size={14} />
+                        {DAYS_OPTIONS.map((opt) => (
+                            <button
+                                key={opt.value}
+                                className={`days-option${daysBack === opt.value ? ' active' : ''}`}
+                                onClick={() => setDaysBack(opt.value)}
+                                disabled={scrapingInProgress}
+                            >
+                                {opt.label}
+                            </button>
+                        ))}
+                    </div>
+                    <button
+                        className="scan-all-btn"
+                        onClick={() => triggerScrape(null, daysBack)}
+                        disabled={scrapingInProgress}
+                    >
+                        {scrapingInProgress ? (
+                            <>
+                                <Loader2 size={16} className="spin-icon" />
+                                סורק...
+                            </>
+                        ) : (
+                            <>
+                                <Zap size={16} />
+                                סרוק הכל
+                            </>
+                        )}
+                    </button>
+                </div>
             </div>
 
             {/* Summary Stats */}
@@ -202,7 +225,7 @@ export default function ScrapersDashboard() {
                             {/* Scan button */}
                             <button
                                 className="scan-site-btn"
-                                onClick={() => triggerScrape(site.id)}
+                                onClick={() => triggerScrape(site.id, daysBack)}
                                 disabled={scrapingInProgress && (scrapingSiteId === null || scrapingSiteId === site.id)}
                             >
                                 {scrapingInProgress && (scrapingSiteId === null || scrapingSiteId === site.id) ? (

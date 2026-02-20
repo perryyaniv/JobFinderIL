@@ -1218,6 +1218,59 @@ a:hover { color: var(--accent-primary-hover); }
   margin-top: 4px;
 }
 
+.scrapers-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.days-selector {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: var(--bg-glass);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: 4px;
+}
+
+.days-selector > svg {
+  color: var(--text-muted);
+  margin: 0 6px;
+  flex-shrink: 0;
+}
+
+.days-option {
+  padding: 8px 14px;
+  background: transparent;
+  color: var(--text-secondary);
+  border: none;
+  border-radius: var(--radius-sm);
+  font-size: 0.85rem;
+  font-weight: 500;
+  font-family: var(--font-sans);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  white-space: nowrap;
+}
+
+.days-option:hover:not(:disabled):not(.active) {
+  color: var(--text-primary);
+  background: var(--bg-glass-strong);
+}
+
+.days-option.active {
+  background: var(--accent-primary);
+  color: white;
+  box-shadow: 0 0 8px var(--accent-primary-glow);
+}
+
+.days-option:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 .scan-all-btn {
   padding: 12px 28px;
   background: var(--gradient-button);
@@ -1469,8 +1522,10 @@ a:hover { color: var(--accent-primary-hover); }
 /* Scrapers responsive */
 @media (max-width: 640px) {
   .scrapers-header { flex-direction: column; }
+  .scrapers-actions { width: 100%; justify-content: space-between; }
   .scraper-grid { grid-template-columns: 1fr; }
   .scrapers-stats { grid-template-columns: repeat(3, 1fr); }
+  .days-option { padding: 6px 10px; font-size: 0.8rem; }
 }
 
 /* --- Login Screen --- */

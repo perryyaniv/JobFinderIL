@@ -10,16 +10,17 @@ const router = require('express').Router();
  */
 router.post('/trigger', async (req, res) => {
     try {
-        const { site } = req.query;
+        const { site, daysBack } = req.query;
         const { startScraping } = require('../scheduler');
+        const days = parseInt(daysBack, 10) || null;
 
         // Fire and forget — scraping happens in background
         if (site) {
-            logger.info(`Manual scrape triggered for site: ${site}`);
-            startScraping(site);
+            logger.info(`Manual scrape triggered for site: ${site}, daysBack: ${days || 'default'}`);
+            startScraping(site, { daysBack: days });
         } else {
-            logger.info('Manual scrape triggered for all sites');
-            startScraping();
+            logger.info(`Manual scrape triggered for all sites, daysBack: ${days || 'default'}`);
+            startScraping(null, { daysBack: days });
         }
 
         res.json({

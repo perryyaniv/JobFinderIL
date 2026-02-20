@@ -45,7 +45,8 @@ function getScraperClass(siteId) {
 /**
  * Run scraping for a single site or all sites.
  */
-async function startScraping(siteId = null) {
+async function startScraping(siteId = null, options = {}) {
+    const { daysBack } = options;
     const sites = siteId
         ? [siteId]
         : Object.values(SOURCE_SITES).map(s => s.id);
@@ -60,7 +61,7 @@ async function startScraping(siteId = null) {
         }
 
         try {
-            const result = await scraper.run();
+            const result = await scraper.run({ daysBack });
             results.push(result);
         } catch (error) {
             logger.error(`Scraper ${id} threw an unexpected error`, { error: error.message });
