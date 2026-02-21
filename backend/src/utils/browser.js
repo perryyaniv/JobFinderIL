@@ -1,4 +1,5 @@
 const logger = require('./logger');
+const fs = require('fs');
 
 let puppeteerCore;
 let chromium;
@@ -16,42 +17,55 @@ try {
 }
 
 /**
- * Launch a headless browser using puppeteer-core + @sparticuz/chromium.
- * Falls back to local Chrome path for development.
+ * Launch a headless browser using puppeteer-core.
+ * Strategy:
+ *  1. Try @sparticuz/chromium (works on Render / AWS Lambda / Linux cloud)
+ *  2. Fall back to locally installed Chrome (dev machines)
  * Returns null if no browser is available.
  */
 async function launchBrowser() {
     if (!puppeteerCore) return null;
 
-    try {
-        const executablePath = chromium
-            ? await chromium.executablePath()
-            : findLocalChrome();
-
-        if (!executablePath) {
-            logger.warn('No Chrome executable found');
-            return null;
+    // --- Attempt 1: @sparticuz/chromium (cloud) ---
+    if (chromium) {
+        try {
+            const executablePath = await chromium.executablePath();
+            if (executablePath && fs.existsSync(executablePath)) {
+                return await puppeteerCore.launch({
+                    headless: chromium.headless,
+                    executablePath,
+                    ignoreHTTPSErrors: true,
+                    args: chromium.args,
+                });
+            }
+        } catch (error) {
+            logger.debug(`@sparticuz/chromium failed: ${error.message}, trying local Chrome...`);
         }
-
-        return await puppeteerCore.launch({
-            headless: chromium ? chromium.headless : 'new',
-            executablePath,
-            ignoreHTTPSErrors: true,
-            args: chromium
-                ? chromium.args
-                : ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
-        });
-    } catch (error) {
-        logger.error(`Failed to launch browser: ${error.message}`);
-        return null;
     }
+
+    // --- Attempt 2: local Chrome installation (dev) ---
+    const localPath = findLocalChrome();
+    if (localPath) {
+        try {
+            return await puppeteerCore.launch({
+                headless: 'new',
+                executablePath: localPath,
+                ignoreHTTPSErrors: true,
+                args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
+            });
+        } catch (error) {
+            logger.error(`Failed to launch local Chrome: ${error.message}`);
+        }
+    }
+
+    logger.warn('No Chrome executable found');
+    return null;
 }
 
 /**
  * Try to find a local Chrome installation for development.
  */
 function findLocalChrome() {
-    const fs = require('fs');
     const paths = [
         // Windows
         'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
@@ -72,10 +86,13 @@ function findLocalChrome() {
     // Try puppeteer's bundled Chrome if available
     try {
         const puppeteer = require('puppeteer');
-        return puppeteer.executablePath();
+        const bundled = puppeteer.executablePath();
+        if (bundled && fs.existsSync(bundled)) return bundled;
     } catch {
-        return null;
+        // not available
     }
+
+    return null;
 }
 
 module.exports = { launchBrowser };

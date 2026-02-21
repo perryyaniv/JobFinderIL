@@ -31,28 +31,24 @@ const GovIlScraper = require('../sites/GovIlScraper');
 const IndeedScraper = require('../sites/IndeedScraper');
 const NbnScraper = require('../sites/NbnScraper');
 
-// Check if puppeteer-core + a Chrome executable are available
+// Check if puppeteer-core + a real Chrome executable are available
 let puppeteerAvailable = false;
 try {
     require('puppeteer-core');
     const fs = require('fs');
-    // Check @sparticuz/chromium first (cloud), then local Chrome paths
-    try {
-        require.resolve('@sparticuz/chromium');
-        puppeteerAvailable = true;
-    } catch {
-        // Fall back to checking local Chrome installations
-        const localPaths = [
-            'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
-            'C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe',
-            process.env.LOCALAPPDATA && `${process.env.LOCALAPPDATA}\\Google\\Chrome\\Application\\chrome.exe`,
-            '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
-            '/usr/bin/google-chrome',
-            '/usr/bin/chromium-browser',
-            '/usr/bin/chromium',
-        ].filter(Boolean);
-        puppeteerAvailable = localPaths.some(p => fs.existsSync(p));
-    }
+    const localPaths = [
+        // Windows
+        'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
+        'C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe',
+        process.env.LOCALAPPDATA && `${process.env.LOCALAPPDATA}\\Google\\Chrome\\Application\\chrome.exe`,
+        // macOS
+        '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
+        // Linux
+        '/usr/bin/google-chrome',
+        '/usr/bin/chromium-browser',
+        '/usr/bin/chromium',
+    ].filter(Boolean);
+    puppeteerAvailable = localPaths.some(p => fs.existsSync(p));
 } catch {
     // puppeteer-core not available
 }
