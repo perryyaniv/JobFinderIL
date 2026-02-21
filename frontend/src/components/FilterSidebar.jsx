@@ -106,6 +106,11 @@ export default function FilterSidebar({ params, meta, onFilter, onToggle, isOpen
                 <div className={`toggle-switch ${params.favorites === 'true' ? 'active' : ''}`} />
             </div>
 
+            <div className="toggle-container" onClick={() => onFilter('sentCV', params.sentCV === 'true' ? '' : 'true')}>
+                <span className="toggle-label">שלחתי קו״ח בלבד</span>
+                <div className={`toggle-switch ${params.sentCV === 'true' ? 'active' : ''}`} />
+            </div>
+
             <div className="filter-section">
                 <div className={`filter-header ${openSections.date ? 'open' : ''}`} onClick={() => toggleSection('date')}>
                     <span>תאריך פרסום</span>

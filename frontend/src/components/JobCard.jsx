@@ -1,13 +1,13 @@
 'use client';
 
-import { MapPin, Building2, Clock, Wifi, CheckCircle2, Heart, EyeOff } from 'lucide-react';
+import { MapPin, Building2, Clock, Wifi, CheckCircle2, Heart, EyeOff, Send } from 'lucide-react';
 import SourceBadge from './SourceBadge';
 
-export default function JobCard({ job, onClick, onToggleFavorite, onHide }) {
+export default function JobCard({ job, onClick, onToggleFavorite, onToggleSentCV, onHide }) {
     const timeAgo = job.postedAt ? getTimeAgo(new Date(job.postedAt)) : null;
 
     return (
-        <div className="job-card" onClick={onClick} id={`job-${job.id}`}>
+        <div className={`job-card${job.sentCV ? ' sent-cv' : ''}`} onClick={onClick} id={`job-${job.id}`}>
             <div className="job-card-header">
                 <div style={{ flex: 1 }}>
                     <h3 className="job-title">{job.titleHe || job.title}</h3>
@@ -69,6 +69,13 @@ export default function JobCard({ job, onClick, onToggleFavorite, onHide }) {
                         title={job.isFavorite ? 'הסר ממועדפים' : 'הוסף למועדפים'}
                     >
                         <Heart size={16} fill={job.isFavorite ? 'currentColor' : 'none'} />
+                    </button>
+                    <button
+                        className={`job-action-btn sentcv-btn ${job.sentCV ? 'active' : ''}`}
+                        onClick={(e) => { e.stopPropagation(); onToggleSentCV(job.id); }}
+                        title={job.sentCV ? 'בטל שלחתי קו״ח' : 'שלחתי קו״ח'}
+                    >
+                        <Send size={16} />
                     </button>
                     <button
                         className="job-action-btn hide-btn"

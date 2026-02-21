@@ -91,7 +91,7 @@ export default function LoginScreen({ onReady }) {
 
                 {/* Progress bar — always visible */}
                 <div className="login-progress-section">
-                    <div className="login-progress-track">
+                    <div className={`login-progress-track${serverReady ? ' ready' : ''}`}>
                         <div
                             className={`login-progress-fill${serverReady ? ' complete' : ''}`}
                             style={{ width: `${progress}%` }}

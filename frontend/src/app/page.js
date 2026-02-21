@@ -20,7 +20,7 @@ export default function HomePage() {
         jobs, pagination, loading, error, params,
         activeFilters, setSearch, setFilter, toggleFilter,
         setSort, setPage, clearFilters, clearFilter,
-        toggleFavorite, hideJob,
+        toggleFavorite, toggleSentCV, hideJob,
     } = useJobs();
 
     const { stats } = useStats();
@@ -153,6 +153,7 @@ export default function HomePage() {
                                                     job={job}
                                                     onClick={() => setSelectedJob(job)}
                                                     onToggleFavorite={toggleFavorite}
+                                                    onToggleSentCV={toggleSentCV}
                                                     onHide={hideJob}
                                                 />
                                             </div>
@@ -194,6 +195,7 @@ export default function HomePage() {
                                 job={selectedJob}
                                 onClose={() => setSelectedJob(null)}
                                 onToggleFavorite={toggleFavorite}
+                                onToggleSentCV={toggleSentCV}
                                 onHide={(id) => {
                                     hideJob(id);
                                     setSelectedJob(null);

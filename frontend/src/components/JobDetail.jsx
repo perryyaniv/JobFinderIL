@@ -1,11 +1,11 @@
 'use client';
 
-import { X, MapPin, Building2, Clock, Wifi, ExternalLink, CheckCircle2, Heart, EyeOff } from 'lucide-react';
+import { X, MapPin, Building2, Clock, Wifi, ExternalLink, CheckCircle2, Heart, EyeOff, Send } from 'lucide-react';
 import SourceBadge from './SourceBadge';
 import { useEffect, useState } from 'react';
 import api from '../lib/api';
 
-export default function JobDetail({ job, onClose, onToggleFavorite, onHide }) {
+export default function JobDetail({ job, onClose, onToggleFavorite, onToggleSentCV, onHide }) {
     const [fullJob, setFullJob] = useState(job);
 
     // Fetch full job data (list endpoint excludes description)
@@ -127,6 +127,16 @@ export default function JobDetail({ job, onClose, onToggleFavorite, onHide }) {
                     >
                         <Heart size={18} fill={fullJob.isFavorite ? 'currentColor' : 'none'} />
                         {fullJob.isFavorite ? 'הסר ממועדפים' : 'הוסף למועדפים'}
+                    </button>
+                    <button
+                        className={`modal-action-btn sentcv-btn ${fullJob.sentCV ? 'active' : ''}`}
+                        onClick={() => {
+                            onToggleSentCV(fullJob.id);
+                            setFullJob(prev => ({ ...prev, sentCV: !prev.sentCV }));
+                        }}
+                    >
+                        <Send size={18} />
+                        {fullJob.sentCV ? 'בטל שלחתי קו״ח' : 'שלחתי קו״ח'}
                     </button>
                     <button
                         className="modal-action-btn hide-btn"

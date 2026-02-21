@@ -30,6 +30,7 @@ const jobSchema = new mongoose.Schema(
         fingerprint: { type: String, default: null },
         hidden: { type: Boolean, default: false },
         isFavorite: { type: Boolean, default: false },
+        sentCV: { type: Boolean, default: false },
     },
     {
         timestamps: { createdAt: false, updatedAt: 'updatedAt' },
@@ -64,5 +65,6 @@ jobSchema.index({ company: 1 });
 jobSchema.index({ jobType: 1 });
 jobSchema.index({ hidden: 1 });
 jobSchema.index({ isFavorite: 1 });
+jobSchema.index({ sentCV: 1 });
 
 module.exports = mongoose.model('Job', jobSchema);

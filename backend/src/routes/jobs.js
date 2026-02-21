@@ -101,6 +101,23 @@ router.post('/:id/favorite', async (req, res) => {
 });
 
 /**
+ * POST /api/jobs/:id/sentcv
+ * Toggle "Sent CV" status of a job.
+ */
+router.post('/:id/sentcv', async (req, res) => {
+    try {
+        const result = await filterService.toggleSentCV(req.params.id);
+        if (!result) {
+            return res.status(404).json({ error: 'Job not found' });
+        }
+        res.json(result);
+    } catch (error) {
+        logger.error('Error toggling sentCV', { id: req.params.id, error: error.message });
+        res.status(500).json({ error: 'Failed to toggle sent CV' });
+    }
+});
+
+/**
  * POST /api/jobs/:id/hide
  * Hide a job from all future results.
  */

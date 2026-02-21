@@ -89,6 +89,11 @@ class FilterService {
             filter.isFavorite = true;
         }
 
+        // Sent CV filter
+        if (params.sentCV === 'true') {
+            filter.sentCV = true;
+        }
+
         // Salary range filter
         if (params.salaryMin) {
             const min = parseInt(params.salaryMin, 10);
@@ -110,22 +115,24 @@ class FilterService {
      * Build a Mongoose sort object from sort parameter.
      */
     buildSort(sortBy) {
+        // sentCV jobs always appear last, regardless of chosen sort
+        const base = { sentCV: 1 };
         switch (sortBy) {
             case 'date_desc':
-                return { postedAt: -1 };
+                return { ...base, postedAt: -1 };
             case 'date_asc':
-                return { postedAt: 1 };
+                return { ...base, postedAt: 1 };
             case 'company_asc':
-                return { company: 1 };
+                return { ...base, company: 1 };
             case 'company_desc':
-                return { company: -1 };
+                return { ...base, company: -1 };
             case 'salary_desc':
-                return { salaryMax: -1 };
+                return { ...base, salaryMax: -1 };
             case 'salary_asc':
-                return { salaryMin: 1 };
+                return { ...base, salaryMin: 1 };
             case 'relevance':
             default:
-                return { scrapedAt: -1 };
+                return { ...base, scrapedAt: -1 };
         }
     }
 
@@ -139,7 +146,7 @@ class FilterService {
         const limit = Math.min(100, Math.max(1, parseInt(params.limit, 10) || 20));
         const skip = (page - 1) * limit;
 
-        const selectFields = 'title titleHe company companyVerified location city region jobType experienceLevel salary salaryMin salaryMax category skills url sourceUrl sourceSite postedAt scrapedAt isRemote isHybrid isFavorite';
+        const selectFields = 'title titleHe company companyVerified location city region jobType experienceLevel salary salaryMin salaryMax category skills url sourceUrl sourceSite postedAt scrapedAt isRemote isHybrid isFavorite sentCV';
 
         const [jobs, total] = await Promise.all([
             Job.find(filter).sort(sort).skip(skip).limit(limit).select(selectFields).lean(),
@@ -252,6 +259,14 @@ class FilterService {
         job.isFavorite = !job.isFavorite;
         await job.save();
         return { id: job._id.toString(), isFavorite: job.isFavorite };
+    }
+
+    async toggleSentCV(id) {
+        const job = await Job.findById(id);
+        if (!job) return null;
+        job.sentCV = !job.sentCV;
+        await job.save();
+        return { id: job._id.toString(), sentCV: job.sentCV };
     }
 
     async hideJob(id) {

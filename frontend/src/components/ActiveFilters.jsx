@@ -17,6 +17,7 @@ const FILTER_LABELS = {
     salaryMin: 'שכר מינימום',
     salaryMax: 'שכר מקסימום',
     favorites: 'מועדפים',
+    sentCV: 'שלחתי קו״ח',
 };
 
 export default function ActiveFilters({ filters, onRemove, onClearAll }) {
@@ -47,6 +48,7 @@ function formatValue(key, value) {
     if (key === 'remote') return 'כן';
     if (key === 'hybrid') return 'כן';
     if (key === 'favorites') return 'כן';
+    if (key === 'sentCV') return 'כן';
     if (key === 'daysAgo') {
         const days = parseInt(value, 10);
         if (days === 1) return '24 שעות';

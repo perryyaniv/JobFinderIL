@@ -1085,9 +1085,27 @@ a:hover { color: var(--accent-primary-hover); }
   color: #ef4444;
 }
 
+.job-action-btn.sentcv-btn.active {
+  color: #06b6d4;
+}
+
+.job-action-btn.sentcv-btn:hover {
+  color: #06b6d4;
+}
+
 .job-action-btn.hide-btn:hover {
   color: var(--text-muted);
   background: rgba(239, 68, 68, 0.1);
+}
+
+/* Sent CV card dim effect */
+.job-card.sent-cv {
+  opacity: 0.65;
+  border-color: rgba(6, 182, 212, 0.2);
+}
+
+.job-card.sent-cv:hover {
+  opacity: 0.85;
 }
 
 /* Modal action buttons */
@@ -1124,6 +1142,17 @@ a:hover { color: var(--accent-primary-hover); }
   color: #ef4444;
   border-color: rgba(239, 68, 68, 0.3);
   background: rgba(239, 68, 68, 0.08);
+}
+
+.modal-action-btn.sentcv-btn.active {
+  color: #06b6d4;
+  border-color: rgba(6, 182, 212, 0.3);
+  background: rgba(6, 182, 212, 0.08);
+}
+
+.modal-action-btn.sentcv-btn:hover {
+  color: #06b6d4;
+  border-color: rgba(6, 182, 212, 0.3);
 }
 
 .modal-action-btn.hide-btn:hover {
@@ -1671,27 +1700,58 @@ a:hover { color: var(--accent-primary-hover); }
   border-radius: var(--radius-full);
   overflow: hidden;
   border: 1px solid var(--border-subtle);
+  position: relative;
+}
+
+.login-progress-track::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  width: 40%;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(99, 102, 241, 0.15) 50%,
+    transparent 100%
+  );
+  animation: trackPulse 2s ease-in-out infinite;
+}
+
+.login-progress-track.ready::after {
+  display: none;
 }
 
 .login-progress-fill {
   height: 100%;
   background: var(--gradient-hero);
   border-radius: var(--radius-full);
-  transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: width 1s cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;
+  box-shadow: 0 0 8px rgba(99, 102, 241, 0.4), 0 0 16px rgba(99, 102, 241, 0.2);
+  animation: progressGlow 2s ease-in-out infinite;
 }
 
 .login-progress-fill::after {
   content: '';
   position: absolute;
-  inset: 0;
+  top: 0;
+  bottom: 0;
+  left: -100%;
+  width: 200%;
   background: linear-gradient(
     90deg,
     transparent 0%,
-    rgba(255, 255, 255, 0.3) 50%,
+    transparent 35%,
+    rgba(255, 255, 255, 0.4) 50%,
+    transparent 65%,
     transparent 100%
   );
-  animation: shimmer 1.5s infinite;
+  animation: shimmer 2s ease-in-out infinite;
+}
+
+.login-progress-fill.complete {
+  box-shadow: 0 0 12px rgba(34, 197, 94, 0.5);
+  animation: none;
 }
 
 .login-progress-fill.complete::after {
@@ -1713,8 +1773,18 @@ a:hover { color: var(--accent-primary-hover); }
 }
 
 @keyframes shimmer {
+  0% { transform: translateX(-50%); }
+  100% { transform: translateX(50%); }
+}
+
+@keyframes progressGlow {
+  0%, 100% { box-shadow: 0 0 8px rgba(99, 102, 241, 0.4), 0 0 16px rgba(99, 102, 241, 0.2); }
+  50% { box-shadow: 0 0 12px rgba(99, 102, 241, 0.6), 0 0 24px rgba(99, 102, 241, 0.3); }
+}
+
+@keyframes trackPulse {
   0% { transform: translateX(-100%); }
-  100% { transform: translateX(100%); }
+  100% { transform: translateX(350%); }
 }
 
 @media (max-width: 640px) {

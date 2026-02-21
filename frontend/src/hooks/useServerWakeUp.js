@@ -10,7 +10,7 @@ const ERROR_THRESHOLD_MS = 60000;
 
 export default function useServerWakeUp() {
     const [serverReady, setServerReady] = useState(false);
-    const [progress, setProgress] = useState(0);
+    const [progress, setProgress] = useState(5);
     const [error, setError] = useState(null);
     const startTimeRef = useRef(null);
     const intervalRef = useRef(null);

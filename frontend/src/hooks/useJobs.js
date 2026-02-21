@@ -18,6 +18,7 @@ const DEFAULT_PARAMS = {
     salaryMin: '',
     salaryMax: '',
     favorites: '',
+    sentCV: '',
     sort: 'date_desc',
     page: 1,
     limit: 20,
@@ -109,6 +110,25 @@ export function useJobs() {
         }
     }, []);
 
+    const toggleSentCV = useCallback(async (jobId) => {
+        setData(prev => ({
+            ...prev,
+            jobs: prev.jobs.map(job =>
+                job.id === jobId ? { ...job, sentCV: !job.sentCV } : job
+            ),
+        }));
+        try {
+            await api.toggleSentCV(jobId);
+        } catch {
+            setData(prev => ({
+                ...prev,
+                jobs: prev.jobs.map(job =>
+                    job.id === jobId ? { ...job, sentCV: !job.sentCV } : job
+                ),
+            }));
+        }
+    }, []);
+
     const hideJob = useCallback(async (jobId) => {
         setData(prev => ({
             ...prev,
@@ -145,6 +165,7 @@ export function useJobs() {
         clearFilters,
         clearFilter,
         toggleFavorite,
+        toggleSentCV,
         hideJob,
         refresh: () => fetchJobs(params),
     };

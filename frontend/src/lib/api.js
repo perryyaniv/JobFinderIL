@@ -51,9 +51,13 @@ class ApiClient {
         return this.request('/api/jobs/meta');
     }
 
-    // Favorites & Hide
+    // Favorites, Sent CV & Hide
     async toggleFavorite(id) {
         return this.request(`/api/jobs/${id}/favorite`, { method: 'POST' });
+    }
+
+    async toggleSentCV(id) {
+        return this.request(`/api/jobs/${id}/sentcv`, { method: 'POST' });
     }
 
     async hideJob(id) {
