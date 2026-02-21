@@ -31,16 +31,30 @@ const GovIlScraper = require('../sites/GovIlScraper');
 const IndeedScraper = require('../sites/IndeedScraper');
 const NbnScraper = require('../sites/NbnScraper');
 
-// Check if Puppeteer + Chrome are available synchronously
+// Check if puppeteer-core + a Chrome executable are available
 let puppeteerAvailable = false;
 try {
-    const puppeteer = require('puppeteer');
-    // Quick check: can puppeteer find its Chrome executable?
-    const browserPath = puppeteer.executablePath();
+    require('puppeteer-core');
     const fs = require('fs');
-    puppeteerAvailable = fs.existsSync(browserPath);
+    // Check @sparticuz/chromium first (cloud), then local Chrome paths
+    try {
+        require.resolve('@sparticuz/chromium');
+        puppeteerAvailable = true;
+    } catch {
+        // Fall back to checking local Chrome installations
+        const localPaths = [
+            'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
+            'C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe',
+            process.env.LOCALAPPDATA && `${process.env.LOCALAPPDATA}\\Google\\Chrome\\Application\\chrome.exe`,
+            '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
+            '/usr/bin/google-chrome',
+            '/usr/bin/chromium-browser',
+            '/usr/bin/chromium',
+        ].filter(Boolean);
+        puppeteerAvailable = localPaths.some(p => fs.existsSync(p));
+    }
 } catch {
-    // Puppeteer or Chrome not available
+    // puppeteer-core not available
 }
 
 const describeIfPuppeteer = puppeteerAvailable ? describe : describe.skip;

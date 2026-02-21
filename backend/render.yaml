@@ -3,7 +3,7 @@ services:
     name: jobfinder-api
     runtime: node
     plan: free
-    buildCommand: npm install && npx puppeteer browsers install chrome
+    buildCommand: npm install
     startCommand: node src/server.js
     envVars:
       - key: DATABASE_URL

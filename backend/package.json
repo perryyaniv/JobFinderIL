@@ -20,7 +20,8 @@
     "helmet": "^7.1.0",
     "mongoose": "^8.8.0",
     "node-cron": "^3.0.3",
-    "puppeteer": "^23.5.0",
+    "puppeteer-core": "^23.5.0",
+    "@sparticuz/chromium": "^129.0.0",
     "winston": "^3.14.0"
   },
   "devDependencies": {

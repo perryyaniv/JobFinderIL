@@ -1,13 +1,7 @@
 const BaseScraper = require('../BaseScraper');
 const logger = require('../../utils/logger');
 const { delay } = require('../../utils/helpers');
-
-let puppeteer;
-try {
-    puppeteer = require('puppeteer');
-} catch (e) {
-    logger.warn('Puppeteer not available');
-}
+const { launchBrowser } = require('../../utils/browser');
 
 class LinkedInScraper extends BaseScraper {
     constructor() {
@@ -15,12 +9,8 @@ class LinkedInScraper extends BaseScraper {
     }
 
     async scrape(searchParams = {}) {
-        if (!puppeteer) return [];
-
-        const browser = await puppeteer.launch({
-            headless: 'new',
-            args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
-        });
+        const browser = await launchBrowser();
+        if (!browser) return [];
 
         const jobs = [];
 

@@ -1,9 +1,7 @@
 const BaseScraper = require('../BaseScraper');
 const logger = require('../../utils/logger');
 const { delay } = require('../../utils/helpers');
-
-let puppeteer;
-try { puppeteer = require('puppeteer'); } catch (e) { }
+const { launchBrowser } = require('../../utils/browser');
 
 class GlassdoorScraper extends BaseScraper {
     constructor() {
@@ -11,12 +9,8 @@ class GlassdoorScraper extends BaseScraper {
     }
 
     async scrape(searchParams = {}) {
-        if (!puppeteer) return [];
-
-        const browser = await puppeteer.launch({
-            headless: 'new',
-            args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
-        });
+        const browser = await launchBrowser();
+        if (!browser) return [];
         const jobs = [];
 
         try {
