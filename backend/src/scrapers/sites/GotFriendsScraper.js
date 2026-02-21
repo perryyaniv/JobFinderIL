@@ -1,6 +1,5 @@
 const BaseScraper = require('../BaseScraper');
 const logger = require('../../utils/logger');
-const { delay } = require('../../utils/helpers');
 const { launchBrowser } = require('../../utils/browser');
 
 class GotFriendsScraper extends BaseScraper {
@@ -18,57 +17,44 @@ class GotFriendsScraper extends BaseScraper {
             const page = await browser.newPage();
             await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36');
 
-            for (let pageNum = 1; pageNum <= this.maxPages; pageNum++) {
-                const url = `${this.baseUrl}/משרות/?page=${pageNum}`;
-                logger.debug(`GotFriends: Fetching page ${pageNum}`);
+            const url = `${this.baseUrl}/jobs/`;
+            logger.debug(`GotFriends: Fetching ${url}`);
 
-                await page.goto(url, { waitUntil: 'networkidle2', timeout: 30000 });
-                await page.waitForSelector('[class*="job"], [class*="position"], .card', { timeout: 10000 }).catch(() => { });
+            await page.goto(url, { waitUntil: 'networkidle2', timeout: 30000 });
 
-                const pageJobs = await page.evaluate(() => {
-                    const results = [];
-                    const cards = document.querySelectorAll('[class*="job-card"], [class*="position-card"], .card[data-id], [class*="JobCard"]');
+            // Cards are <a class="position" href="..."> with <h2 class="title"> inside
+            await page.waitForSelector('a.position', { timeout: 10000 }).catch(() => { });
 
-                    cards.forEach(card => {
-                        try {
-                            const titleEl = card.querySelector('h2, h3, [class*="title"], a[href*="position"]');
-                            const companyEl = card.querySelector('[class*="company"]');
-                            const locationEl = card.querySelector('[class*="location"], [class*="city"]');
-                            const categoryEl = card.querySelector('[class*="category"], [class*="field"]');
-                            const linkEl = card.querySelector('a[href*="position"], a[href*="job"]') || titleEl?.closest('a');
+            const pageJobs = await page.evaluate((baseUrl) => {
+                const results = [];
+                const cards = document.querySelectorAll('a.position');
 
-                            const title = titleEl?.textContent?.trim();
-                            const href = linkEl?.href;
+                cards.forEach(card => {
+                    try {
+                        const titleEl = card.querySelector('h2.title');
+                        const title = titleEl?.textContent?.trim();
+                        const href = card.getAttribute('href');
 
-                            if (title && href) {
-                                results.push({
-                                    title,
-                                    company: companyEl?.textContent?.trim() || 'GotFriends',
-                                    location: locationEl?.textContent?.trim() || null,
-                                    category: categoryEl?.textContent?.trim() || null,
-                                    url: href,
-                                });
-                            }
-                        } catch (e) {
-                            // Skip
+                        if (title && href) {
+                            const fullUrl = href.startsWith('http') ? href : baseUrl + href;
+                            results.push({ title, url: fullUrl });
                         }
-                    });
-
-                    return results;
+                    } catch (e) {
+                        // Skip
+                    }
                 });
 
-                for (const job of pageJobs) {
-                    jobs.push({
-                        ...job,
-                        titleHe: job.title,
-                        companyVerified: true, // Recruitment agency
-                        city: job.location,
-                        sourceUrl: job.url,
-                    });
-                }
+                return results;
+            }, this.baseUrl);
 
-                if (pageJobs.length === 0) break;
-                await delay(this.delayBetweenPages);
+            for (const job of pageJobs) {
+                jobs.push({
+                    ...job,
+                    titleHe: job.title,
+                    company: 'GotFriends',
+                    companyVerified: true,
+                    sourceUrl: job.url,
+                });
             }
         } finally {
             await browser.close();

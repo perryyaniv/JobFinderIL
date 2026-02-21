@@ -1,9 +1,10 @@
 const BaseScraper = require('../BaseScraper');
 const logger = require('../../utils/logger');
+const { launchBrowser } = require('../../utils/browser');
 
 /**
- * Indeed scraper — Indeed aggressively blocks scrapers (403).
- * Uses their public RSS feed as a fallback.
+ * Indeed scraper — Indeed discontinued their RSS feed (returns 404).
+ * Now uses Puppeteer to scrape the web interface directly.
  */
 class IndeedScraper extends BaseScraper {
     constructor() {
@@ -11,69 +12,68 @@ class IndeedScraper extends BaseScraper {
     }
 
     async scrape(searchParams = {}) {
+        const browser = await launchBrowser();
+        if (!browser) return [];
+
         const jobs = [];
 
         try {
-            // Indeed provides RSS feeds for job searches
+            const page = await browser.newPage();
+            await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36');
+
             const query = searchParams.query ? encodeURIComponent(searchParams.query) : '';
-            const rssUrl = `${this.baseUrl}/rss?q=${query}&l=Israel&sort=date`;
+            const url = `${this.baseUrl}/jobs?q=${query}&l=Israel&sort=date`;
+            logger.debug(`Indeed: Fetching ${url}`);
 
-            logger.debug(`Indeed: Fetching RSS feed: ${rssUrl}`);
+            await page.goto(url, { waitUntil: 'networkidle2', timeout: 30000 });
 
-            const response = await fetch(rssUrl, {
-                headers: {
-                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-                    'Accept': 'application/rss+xml, application/xml, text/xml',
-                },
-            });
+            // Indeed uses various card selectors
+            await page.waitForSelector('.job_seen_beacon, .jobsearch-ResultsList, [data-jk]', { timeout: 10000 }).catch(() => { });
 
-            if (!response.ok) {
-                logger.warn(`Indeed RSS returned ${response.status}`);
-                return [];
-            }
+            const pageJobs = await page.evaluate((baseUrl) => {
+                const results = [];
+                const cards = document.querySelectorAll('.job_seen_beacon, .result, [data-jk]');
 
-            const xml = await response.text();
+                cards.forEach(card => {
+                    try {
+                        const titleEl = card.querySelector('h2 a, .jobTitle a, [class*="jobTitle"] a');
+                        const companyEl = card.querySelector('[data-testid="company-name"], .companyName, [class*="company"]');
+                        const locationEl = card.querySelector('[data-testid="text-location"], .companyLocation, [class*="location"]');
+                        const dateEl = card.querySelector('.date, [class*="date"]');
 
-            // Simple XML parsing for RSS items
-            const itemRegex = /<item>([\s\S]*?)<\/item>/g;
-            let match;
+                        const title = titleEl?.textContent?.trim();
+                        let href = titleEl?.href || titleEl?.getAttribute('href');
+                        if (href && !href.startsWith('http')) href = baseUrl + href;
 
-            while ((match = itemRegex.exec(xml)) !== null) {
-                const item = match[1];
+                        if (title && href) {
+                            results.push({
+                                title,
+                                company: companyEl?.textContent?.trim() || null,
+                                location: locationEl?.textContent?.trim() || null,
+                                url: href,
+                            });
+                        }
+                    } catch (e) { }
+                });
 
-                const title = this.extractTag(item, 'title');
-                const link = this.extractTag(item, 'link');
-                const description = this.extractTag(item, 'description');
-                const pubDate = this.extractTag(item, 'pubDate');
-                const source = this.extractTag(item, 'source');
-                const location = this.extractTag(item, 'georss:point') || this.extractTag(item, 'indeed:location');
+                return results;
+            }, this.baseUrl);
 
-                if (title && link) {
-                    jobs.push({
-                        title,
-                        company: source || null,
-                        companyVerified: !!source,
-                        description,
-                        location,
-                        city: location,
-                        url: link,
-                        sourceUrl: link,
-                        postedAt: pubDate ? new Date(pubDate) : null,
-                    });
-                }
+            for (const job of pageJobs) {
+                jobs.push({
+                    ...job,
+                    city: job.location,
+                    sourceUrl: job.url,
+                });
             }
         } catch (error) {
             logger.error(`Indeed scrape error: ${error.message}`);
+        } finally {
+            await browser.close();
         }
 
-        logger.info(`Indeed: Scraped ${jobs.length} jobs via RSS`);
+        logger.info(`Indeed: Scraped ${jobs.length} jobs`);
         return jobs;
-    }
-
-    extractTag(xml, tag) {
-        const regex = new RegExp(`<${tag}[^>]*>(?:<!\\[CDATA\\[)?([\\s\\S]*?)(?:\\]\\]>)?</${tag}>`, 'i');
-        const match = xml.match(regex);
-        return match ? match[1].trim() : null;
     }
 }
 

@@ -8,7 +8,12 @@
       "Bash(npm run build:*)",
       "Bash(npm run test:scrapers:*)",
       "Bash(grep:*)",
-      "Bash(node -e:*)"
+      "Bash(node -e:*)",
+      "WebFetch(domain:www.drushim.co.il)",
+      "WebFetch(domain:www.gotfriends.co.il)",
+      "WebFetch(domain:www.sqlink.com)",
+      "WebFetch(domain:www.jobmaster.co.il)",
+      "Bash(npm test:*)"
     ]
   }
 }

@@ -1,57 +1,63 @@
 const BaseScraper = require('../BaseScraper');
-const cheerio = require('cheerio');
 const logger = require('../../utils/logger');
+const { launchBrowser } = require('../../utils/browser');
 
+/**
+ * NBN (Nefesh B'Nefesh) scraper — site returns 403 to plain fetch,
+ * so we use Puppeteer. Uses WordPress Job Manager plugin.
+ */
 class NbnScraper extends BaseScraper {
     constructor() {
         super('nbn', 'https://www.nbn.org.il');
     }
 
     async scrape(searchParams = {}) {
+        const browser = await launchBrowser();
+        if (!browser) return [];
+
         const jobs = [];
 
         try {
-            for (let pageNum = 1; pageNum <= this.maxPages; pageNum++) {
-                const url = `${this.baseUrl}/jobboard/?pg=${pageNum}`;
-                logger.debug(`NBN: Fetching page ${pageNum}`);
+            const page = await browser.newPage();
+            await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36');
 
-                const response = await fetch(url, {
-                    headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' },
+            const url = `${this.baseUrl}/jobboard/`;
+            logger.debug(`NBN: Fetching ${url}`);
+
+            await page.goto(url, { waitUntil: 'networkidle2', timeout: 30000 });
+
+            // WordPress Job Manager: li.job_listing with data-title and data-href
+            await page.waitForSelector('li.job_listing', { timeout: 10000 }).catch(() => { });
+
+            const pageJobs = await page.evaluate(() => {
+                const results = [];
+                const items = document.querySelectorAll('li.job_listing');
+
+                items.forEach(item => {
+                    try {
+                        const title = item.getAttribute('data-title');
+                        const href = item.getAttribute('data-href');
+                        const company = item.querySelector('.job_listing-company strong')?.textContent?.trim();
+                        const location = item.querySelector('.job_listing-location')?.textContent?.trim();
+
+                        if (title && href) {
+                            results.push({ title, company, location, url: href });
+                        }
+                    } catch (e) { }
                 });
 
-                if (!response.ok) break;
-                const html = await response.text();
-                const $ = cheerio.load(html);
+                return results;
+            });
 
-                const pageJobs = [];
-
-                $('.job-listing, .job-item, article, tr, [class*="job"]').each((_, el) => {
-                    const $el = $(el);
-                    const titleEl = $el.find('a[href*="jobboard"], h3, h4, [class*="title"]').first();
-                    const company = $el.find('[class*="company"], .employer, td:nth-child(2)').first().text().trim();
-                    const location = $el.find('[class*="location"], td:nth-child(3)').first().text().trim();
-
-                    const title = titleEl.text().trim();
-                    const href = titleEl.attr('href') || $el.find('a').first().attr('href');
-
-                    if (title && href && title.length > 3) {
-                        const fullUrl = href.startsWith('http') ? href : `${this.baseUrl}${href}`;
-                        pageJobs.push({
-                            title,
-                            company: company || null,
-                            location: location || null,
-                            city: location || null,
-                            url: fullUrl,
-                            sourceUrl: fullUrl,
-                        });
-                    }
+            for (const job of pageJobs) {
+                jobs.push({
+                    ...job,
+                    city: job.location,
+                    sourceUrl: job.url,
                 });
-
-                jobs.push(...pageJobs);
-                if (pageJobs.length === 0) break;
             }
-        } catch (error) {
-            logger.error(`NBN scrape error: ${error.message}`);
+        } finally {
+            await browser.close();
         }
 
         logger.info(`NBN: Scraped ${jobs.length} jobs`);

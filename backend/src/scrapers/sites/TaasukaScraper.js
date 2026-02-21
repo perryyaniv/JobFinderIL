@@ -1,8 +1,12 @@
 const BaseScraper = require('../BaseScraper');
 const logger = require('../../utils/logger');
-const { delay } = require('../../utils/helpers');
 const { launchBrowser } = require('../../utils/browser');
 
+/**
+ * Taasuka (Israel Employment Service) scraper.
+ * The site is a SPA with reCAPTCHA protection at /applicants/jobs/.
+ * We scrape the main page for any visible job content.
+ */
 class TaasukaScraper extends BaseScraper {
     constructor() {
         super('taasuka', 'https://www.taasuka.gov.il');
@@ -18,48 +22,69 @@ class TaasukaScraper extends BaseScraper {
             const page = await browser.newPage();
             await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36');
 
-            const url = `${this.baseUrl}`;
+            // Try the jobs search page
+            const url = `${this.baseUrl}/applicants/jobs/`;
+            logger.debug(`Taasuka: Fetching ${url}`);
+
             await page.goto(url, { waitUntil: 'networkidle2', timeout: 30000 });
-            await page.waitForSelector('table, [class*="job"], .result-item', { timeout: 10000 }).catch(() => { });
 
-            const pageJobs = await page.evaluate(() => {
+            // Wait for any dynamic content to load
+            await page.waitForSelector('[class*="job"], [class*="result"], [class*="vacancy"], table tr', { timeout: 10000 }).catch(() => { });
+
+            const pageJobs = await page.evaluate((baseUrl) => {
                 const results = [];
-                const rows = document.querySelectorAll('table tr, [class*="job-item"], .result-item, [class*="vacancy"]');
 
-                rows.forEach(row => {
-                    try {
-                        const cells = row.querySelectorAll('td');
-                        const linkEl = row.querySelector('a[href]');
+                // Try to find job listings in various formats
+                const selectors = [
+                    '[class*="job-item"]', '[class*="vacancy"]', '[class*="result-item"]',
+                    'table.jobs tr', '[class*="job-card"]',
+                ];
 
-                        if (cells.length >= 2) {
-                            const title = cells[0]?.textContent?.trim() || linkEl?.textContent?.trim();
-                            const company = cells[1]?.textContent?.trim();
-                            const location = cells[2]?.textContent?.trim();
+                for (const sel of selectors) {
+                    const cards = document.querySelectorAll(sel);
+                    cards.forEach(card => {
+                        try {
+                            const titleEl = card.querySelector('h2, h3, [class*="title"], a[href]');
+                            const linkEl = card.querySelector('a[href]');
+
+                            const title = titleEl?.textContent?.trim();
                             const href = linkEl?.href;
 
-                            if (title) {
+                            if (title && href && title.length > 3 && title.length < 200) {
                                 results.push({
                                     title,
-                                    company: company || null,
-                                    location: location || null,
-                                    url: href || window.location.href,
+                                    company: null,
+                                    location: null,
+                                    url: href,
                                 });
                             }
-                        }
-                    } catch (e) { }
-                });
+                        } catch (e) { }
+                    });
+
+                    if (results.length > 0) break;
+                }
 
                 return results;
-            });
+            }, this.baseUrl);
 
             for (const job of pageJobs) {
-                jobs.push({ ...job, titleHe: job.title, city: job.location, sourceUrl: job.url });
+                jobs.push({
+                    ...job,
+                    titleHe: job.title,
+                    city: job.location,
+                    sourceUrl: job.url,
+                });
             }
         } finally {
             await browser.close();
         }
 
-        logger.info(`Taasuka: Scraped ${jobs.length} jobs`);
+        if (jobs.length === 0) {
+            logger.warn('Taasuka: No jobs found (SPA with reCAPTCHA, limited scraping capability)');
+        } else {
+            logger.info(`Taasuka: Scraped ${jobs.length} jobs`);
+        }
+
         return jobs;
     }
 }

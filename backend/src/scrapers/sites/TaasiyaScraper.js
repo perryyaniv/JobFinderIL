@@ -1,6 +1,5 @@
 const BaseScraper = require('../BaseScraper');
 const logger = require('../../utils/logger');
-const { delay } = require('../../utils/helpers');
 const { launchBrowser } = require('../../utils/browser');
 
 class TaasiyaScraper extends BaseScraper {
@@ -18,43 +17,50 @@ class TaasiyaScraper extends BaseScraper {
             const page = await browser.newPage();
             await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36');
 
-            for (let pageNum = 1; pageNum <= this.maxPages; pageNum++) {
-                const url = `${this.baseUrl}/jobs?page=${pageNum}`;
-                logger.debug(`Taasiya: Fetching page ${pageNum}`);
+            const url = `${this.baseUrl}/jobs/`;
+            logger.debug(`Taasiya: Fetching ${url}`);
 
-                await page.goto(url, { waitUntil: 'networkidle2', timeout: 30000 });
-                await page.waitForSelector('[class*="job"], .result, article', { timeout: 10000 }).catch(() => { });
+            await page.goto(url, { waitUntil: 'networkidle2', timeout: 30000 });
 
-                const pageJobs = await page.evaluate(() => {
-                    const results = [];
-                    document.querySelectorAll('[class*="job-item"], article, .result-item, tr[class*="job"]').forEach(card => {
-                        try {
-                            const titleEl = card.querySelector('h2, h3, [class*="title"], a[href*="job"]');
-                            const companyEl = card.querySelector('[class*="company"]');
-                            const locationEl = card.querySelector('[class*="location"]');
-                            const linkEl = card.querySelector('a[href]');
+            // Taasiya uses .resultItem with .resultItem_mid (title) and .resultItem_right (type)
+            await page.waitForSelector('.resultItem', { timeout: 10000 }).catch(() => { });
 
-                            const title = titleEl?.textContent?.trim();
-                            const href = linkEl?.href;
+            const pageJobs = await page.evaluate((baseUrl) => {
+                const results = [];
+                const cards = document.querySelectorAll('.resultItem');
 
-                            if (title && href) {
-                                results.push({
-                                    title, company: companyEl?.textContent?.trim() || null,
-                                    location: locationEl?.textContent?.trim() || null, url: href,
-                                });
-                            }
-                        } catch (e) { }
-                    });
-                    return results;
+                cards.forEach(card => {
+                    try {
+                        const titleEl = card.querySelector('.resultItem_mid a');
+                        const typeEl = card.querySelector('.resultItem_right a');
+
+                        const title = titleEl?.textContent?.trim();
+                        const href = titleEl?.getAttribute('href');
+
+                        if (title && href) {
+                            const fullUrl = href.startsWith('http') ? href : baseUrl + href;
+                            results.push({
+                                title,
+                                jobType: typeEl?.textContent?.trim() || null,
+                                url: fullUrl,
+                            });
+                        }
+                    } catch (e) { }
                 });
 
-                for (const job of pageJobs) {
-                    jobs.push({ ...job, titleHe: job.title, city: job.location, sourceUrl: job.url });
-                }
-                if (pageJobs.length === 0) break;
-                await delay(this.delayBetweenPages);
+                return results;
+            }, this.baseUrl);
+
+            for (const job of pageJobs) {
+                jobs.push({
+                    ...job,
+                    titleHe: job.title,
+                    sourceUrl: job.url,
+                });
             }
-        } finally { await browser.close(); }
+        } finally {
+            await browser.close();
+        }
 
         logger.info(`Taasiya: Scraped ${jobs.length} jobs`);
         return jobs;

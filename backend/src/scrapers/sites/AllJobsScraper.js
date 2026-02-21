@@ -22,7 +22,14 @@ class AllJobsScraper extends BaseScraper {
                 const url = `${this.baseUrl}/SearchResultsGuest.aspx?page=${pageNum}&position=${searchParams.query || ''}&type=&source=&duration=0&exc=&region=`;
                 logger.debug(`AllJobs: Fetching page ${pageNum}: ${url}`);
 
-                await page.goto(url, { waitUntil: 'networkidle2', timeout: 30000 });
+                try {
+                    await page.goto(url, { waitUntil: 'networkidle2', timeout: 30000 });
+                } catch (navError) {
+                    // AllJobs can be slow; keep what we have if a page times out
+                    logger.warn(`AllJobs: Navigation timeout on page ${pageNum}, keeping ${jobs.length} jobs`);
+                    break;
+                }
+
                 await page.waitForSelector('.open-board, .job-content-top', { timeout: 10000 }).catch(() => { });
 
                 const pageJobs = await page.evaluate(() => {

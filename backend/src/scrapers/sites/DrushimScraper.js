@@ -19,37 +19,38 @@ class DrushimScraper extends BaseScraper {
             await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36');
 
             for (let pageNum = 1; pageNum <= this.maxPages; pageNum++) {
-                const query = searchParams.query ? encodeURIComponent(searchParams.query) : '';
-                const url = query
-                    ? `${this.baseUrl}/jobs/search/${query}/?page=${pageNum}&ssaen=1`
-                    : `${this.baseUrl}/jobs/?page=${pageNum}`;
+                // Default page shows categories, not listings — use search URL with a term
+                const query = searchParams.query || 'דרושים';
+                const url = `${this.baseUrl}/jobs/search/${encodeURIComponent(query)}/?page=${pageNum}&ssaen=1`;
 
                 logger.debug(`Drushim: Fetching page ${pageNum}: ${url}`);
                 await page.goto(url, { waitUntil: 'networkidle2', timeout: 30000 });
 
-                // Wait for job cards to load
-                await page.waitForSelector('[class*="job-item"], .job-card, .JobItem', { timeout: 10000 }).catch(() => { });
+                // Drushim uses Vue.js; vacancy cards are .jobList_vacancy
+                await page.waitForSelector('.jobList_vacancy', { timeout: 10000 }).catch(() => { });
 
                 const pageJobs = await page.evaluate(() => {
                     const results = [];
-                    const cards = document.querySelectorAll('[class*="job-item"], .job-card, .JobItem, [data-job-id]');
+                    const cards = document.querySelectorAll('.jobList_vacancy');
 
                     cards.forEach(card => {
                         try {
-                            const titleEl = card.querySelector('a[class*="title"], h2 a, .job-title a, a[href*="/job/"]');
-                            const companyEl = card.querySelector('[class*="company"], .company-name');
-                            const locationEl = card.querySelector('[class*="location"], .job-location');
-                            const categoryEl = card.querySelector('[class*="category"], .job-category');
+                            const titleEl = card.querySelector('h3');
+                            const companyEl = card.querySelector('a.disabledLink span') || card.querySelector('p.disabledLink');
+                            const locationEl = card.querySelector('span.display-18');
+                            const linkEl = card.querySelector('a[href*="/job/"]');
 
                             const title = titleEl?.textContent?.trim();
-                            const url = titleEl?.href;
+                            const url = linkEl?.href;
 
                             if (title && url) {
+                                let location = locationEl?.textContent?.trim() || null;
+                                if (location) location = location.replace(/\s*\|.*$/, '').trim();
+
                                 results.push({
                                     title,
                                     company: companyEl?.textContent?.trim() || null,
-                                    location: locationEl?.textContent?.trim() || null,
-                                    category: categoryEl?.textContent?.trim() || null,
+                                    location,
                                     url,
                                 });
                             }

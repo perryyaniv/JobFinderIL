@@ -1,6 +1,5 @@
 const BaseScraper = require('../BaseScraper');
 const logger = require('../../utils/logger');
-const { delay } = require('../../utils/helpers');
 const { launchBrowser } = require('../../utils/browser');
 
 class SqLinkScraper extends BaseScraper {
@@ -18,56 +17,46 @@ class SqLinkScraper extends BaseScraper {
             const page = await browser.newPage();
             await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36');
 
-            for (let pageNum = 1; pageNum <= this.maxPages; pageNum++) {
-                const url = `${this.baseUrl}/career/jobs/?page=${pageNum}`;
-                logger.debug(`SQLink: Fetching page ${pageNum}`);
+            // Main career page lists all positions (not /career/jobs/ which returns 404)
+            const url = `${this.baseUrl}/career/`;
+            logger.debug(`SQLink: Fetching ${url}`);
 
-                await page.goto(url, { waitUntil: 'networkidle2', timeout: 30000 });
-                await page.waitForSelector('[class*="job"], [class*="career"], .position-item', { timeout: 10000 }).catch(() => { });
+            await page.goto(url, { waitUntil: 'networkidle2', timeout: 30000 });
 
-                const pageJobs = await page.evaluate(() => {
-                    const results = [];
-                    const cards = document.querySelectorAll('[class*="job-item"], [class*="position-item"], [class*="career-item"], [class*="JobCard"]');
+            // Positions use .positionItem container with h3 for title
+            await page.waitForSelector('.positionItem', { timeout: 10000 }).catch(() => { });
 
-                    cards.forEach(card => {
-                        try {
-                            const titleEl = card.querySelector('h2, h3, [class*="title"], a');
-                            const locationEl = card.querySelector('[class*="location"], [class*="area"]');
-                            const categoryEl = card.querySelector('[class*="category"], [class*="field"]');
-                            const linkEl = card.querySelector('a[href*="career"], a[href*="job"]') || titleEl?.closest('a');
+            const pageJobs = await page.evaluate(() => {
+                const results = [];
+                const cards = document.querySelectorAll('.positionItem');
 
-                            const title = titleEl?.textContent?.trim();
-                            const href = linkEl?.href;
+                cards.forEach(card => {
+                    try {
+                        const titleEl = card.querySelector('h3');
+                        const linkEl = card.querySelector('a[href*="/career/"]');
 
-                            if (title && href) {
-                                results.push({
-                                    title,
-                                    company: 'SQLink',
-                                    location: locationEl?.textContent?.trim() || null,
-                                    category: categoryEl?.textContent?.trim() || null,
-                                    url: href,
-                                });
-                            }
-                        } catch (e) {
-                            // Skip
+                        const title = titleEl?.textContent?.trim();
+                        const url = linkEl?.href;
+
+                        if (title && url && !url.endsWith('/career/')) {
+                            results.push({ title, url });
                         }
-                    });
-
-                    return results;
+                    } catch (e) {
+                        // Skip
+                    }
                 });
 
-                for (const job of pageJobs) {
-                    jobs.push({
-                        ...job,
-                        titleHe: job.title,
-                        companyVerified: true,
-                        city: job.location,
-                        sourceUrl: job.url,
-                    });
-                }
+                return results;
+            });
 
-                if (pageJobs.length === 0) break;
-                await delay(this.delayBetweenPages);
+            for (const job of pageJobs) {
+                jobs.push({
+                    ...job,
+                    titleHe: job.title,
+                    company: 'SQLink',
+                    companyVerified: true,
+                    sourceUrl: job.url,
+                });
             }
         } finally {
             await browser.close();

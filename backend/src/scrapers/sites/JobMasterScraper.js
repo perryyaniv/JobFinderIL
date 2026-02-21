@@ -1,8 +1,11 @@
 const BaseScraper = require('../BaseScraper');
 const logger = require('../../utils/logger');
-const { delay } = require('../../utils/helpers');
 const { launchBrowser } = require('../../utils/browser');
 
+/**
+ * JobMaster scraper — old ASP-based site with a search-centric interface.
+ * The homepage loads a search form; we submit it to get results.
+ */
 class JobMasterScraper extends BaseScraper {
     constructor() {
         super('jobmaster', 'https://www.jobmaster.co.il');
@@ -18,61 +21,75 @@ class JobMasterScraper extends BaseScraper {
             const page = await browser.newPage();
             await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36');
 
-            for (let pageNum = 1; pageNum <= this.maxPages; pageNum++) {
-                const url = `${this.baseUrl}/jobs?page=${pageNum}`;
-                logger.debug(`JobMaster: Fetching page ${pageNum}: ${url}`);
+            // JobMaster requires submitting the search form on the homepage
+            const url = `${this.baseUrl}/`;
+            logger.debug(`JobMaster: Fetching ${url}`);
 
-                await page.goto(url, { waitUntil: 'networkidle2', timeout: 30000 });
-                await page.waitForSelector('.job-item, .job-card, [class*="JobCard"]', { timeout: 10000 }).catch(() => { });
+            await page.goto(url, { waitUntil: 'networkidle2', timeout: 30000 });
 
-                const pageJobs = await page.evaluate(() => {
-                    const results = [];
-                    const cards = document.querySelectorAll('.job-item, .job-card, [class*="JobCard"], [class*="job-list"] > div');
+            // Try to trigger a search (empty search = all jobs)
+            try {
+                // Look for search button and click it
+                const searchBtn = await page.$('input[type="submit"], button[type="submit"], .searchBtn, [class*="search"] button');
+                if (searchBtn) {
+                    await searchBtn.click();
+                    await page.waitForNavigation({ waitUntil: 'networkidle2', timeout: 15000 }).catch(() => { });
+                }
+            } catch (e) {
+                logger.debug(`JobMaster: Search submit failed: ${e.message}`);
+            }
 
-                    cards.forEach(card => {
-                        try {
-                            const titleEl = card.querySelector('a[href*="job"], h3 a, .job-title');
-                            const companyEl = card.querySelector('[class*="company"], .employer-name');
-                            const locationEl = card.querySelector('[class*="location"], [class*="city"]');
-                            const typeEl = card.querySelector('[class*="type"], [class*="scope"]');
+            // Try to find job listings on the results page
+            const pageJobs = await page.evaluate(() => {
+                const results = [];
+                // Try various possible selectors
+                const cards = document.querySelectorAll(
+                    '[class*="job-item"], [class*="job-card"], [class*="JobCard"], ' +
+                    '[class*="resultRow"], .boardRow, tr[onclick], ' +
+                    'a[href*="ShowJob"], a[href*="showjob"]'
+                );
 
-                            const title = titleEl?.textContent?.trim();
-                            const href = titleEl?.href || titleEl?.closest('a')?.href;
+                cards.forEach(card => {
+                    try {
+                        const titleEl = card.querySelector('a[href*="job"], h3 a, .job-title, [class*="title"]') || card;
+                        const companyEl = card.querySelector('[class*="company"], .employer');
+                        const locationEl = card.querySelector('[class*="location"], [class*="city"]');
 
-                            if (title && href) {
-                                results.push({
-                                    title,
-                                    company: companyEl?.textContent?.trim() || null,
-                                    location: locationEl?.textContent?.trim() || null,
-                                    jobType: typeEl?.textContent?.trim() || null,
-                                    url: href,
-                                });
-                            }
-                        } catch (e) {
-                            // Skip
+                        const title = titleEl?.textContent?.trim();
+                        const href = titleEl?.href || card.href || card.querySelector('a')?.href;
+
+                        if (title && href && title.length > 3 && title.length < 200) {
+                            results.push({
+                                title,
+                                company: companyEl?.textContent?.trim() || null,
+                                location: locationEl?.textContent?.trim() || null,
+                                url: href,
+                            });
                         }
-                    });
-
-                    return results;
+                    } catch (e) { }
                 });
 
-                for (const job of pageJobs) {
-                    jobs.push({
-                        ...job,
-                        titleHe: job.title,
-                        city: job.location,
-                        sourceUrl: job.url,
-                    });
-                }
+                return results;
+            });
 
-                if (pageJobs.length === 0) break;
-                await delay(this.delayBetweenPages);
+            for (const job of pageJobs) {
+                jobs.push({
+                    ...job,
+                    titleHe: job.title,
+                    city: job.location,
+                    sourceUrl: job.url,
+                });
             }
         } finally {
             await browser.close();
         }
 
-        logger.info(`JobMaster: Scraped ${jobs.length} jobs`);
+        if (jobs.length === 0) {
+            logger.warn('JobMaster: No jobs found (complex ASP site, may need selector update)');
+        } else {
+            logger.info(`JobMaster: Scraped ${jobs.length} jobs`);
+        }
+
         return jobs;
     }
 }

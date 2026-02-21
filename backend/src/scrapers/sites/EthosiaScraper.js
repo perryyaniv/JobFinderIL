@@ -1,8 +1,12 @@
 const BaseScraper = require('../BaseScraper');
 const logger = require('../../utils/logger');
-const { delay } = require('../../utils/helpers');
 const { launchBrowser } = require('../../utils/browser');
 
+/**
+ * Ethosia scraper — ethosia.co.il has SSL certificate issues
+ * (ERR_CERT_COMMON_NAME_INVALID). The /jobs/ path returns 404.
+ * This scraper attempts to access the site but gracefully handles failures.
+ */
 class EthosiaScraper extends BaseScraper {
     constructor() {
         super('ethosia', 'https://www.ethosia.co.il');
@@ -18,57 +22,66 @@ class EthosiaScraper extends BaseScraper {
             const page = await browser.newPage();
             await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36');
 
-            for (let pageNum = 1; pageNum <= this.maxPages; pageNum++) {
-                const url = `${this.baseUrl}/jobs/?page=${pageNum}`;
-                logger.debug(`Ethosia: Fetching page ${pageNum}`);
+            // Try the main careers/jobs page
+            const urls = [
+                `${this.baseUrl}/jobs/`,
+                `${this.baseUrl}/careers/`,
+                'https://ethosia.co.il/jobs/',
+            ];
 
+            for (const url of urls) {
                 try {
-                    await page.goto(url, { waitUntil: 'networkidle2', timeout: 30000 });
-                } catch (navError) {
-                    logger.warn(`Ethosia: Navigation failed for page ${pageNum}: ${navError.message}`);
-                    break;
-                }
-                await page.waitForSelector('[class*="job"], [class*="position"], .card', { timeout: 10000 }).catch(() => { });
+                    logger.debug(`Ethosia: Trying ${url}`);
+                    await page.goto(url, { waitUntil: 'networkidle2', timeout: 15000 });
 
-                const pageJobs = await page.evaluate(() => {
-                    const results = [];
-                    const cards = document.querySelectorAll('[class*="job-item"], [class*="position"], .job-card, article');
+                    const pageTitle = await page.title();
+                    if (pageTitle.includes('404') || pageTitle.includes('לא נמצא')) continue;
 
-                    cards.forEach(card => {
-                        try {
-                            const titleEl = card.querySelector('h2, h3, [class*="title"], a[href*="job"]');
-                            const companyEl = card.querySelector('[class*="company"]');
-                            const locationEl = card.querySelector('[class*="location"]');
-                            const linkEl = card.querySelector('a[href*="job"]') || titleEl?.closest('a');
+                    const pageJobs = await page.evaluate(() => {
+                        const results = [];
+                        const cards = document.querySelectorAll('[class*="job-item"], [class*="position"], .job-card, article, .card');
 
-                            const title = titleEl?.textContent?.trim();
-                            const href = linkEl?.href;
+                        cards.forEach(card => {
+                            try {
+                                const titleEl = card.querySelector('h2, h3, [class*="title"], a[href*="job"]');
+                                const linkEl = card.querySelector('a[href*="job"]') || titleEl?.closest('a');
 
-                            if (title && href) {
-                                results.push({
-                                    title,
-                                    company: companyEl?.textContent?.trim() || 'Ethosia',
-                                    location: locationEl?.textContent?.trim() || null,
-                                    url: href,
-                                });
-                            }
-                        } catch (e) { }
+                                const title = titleEl?.textContent?.trim();
+                                const href = linkEl?.href;
+
+                                if (title && href && title.length > 3) {
+                                    results.push({ title, url: href });
+                                }
+                            } catch (e) { }
+                        });
+                        return results;
                     });
-                    return results;
-                });
 
-                for (const job of pageJobs) {
-                    jobs.push({ ...job, titleHe: job.title, companyVerified: true, city: job.location, sourceUrl: job.url });
+                    for (const job of pageJobs) {
+                        jobs.push({
+                            ...job,
+                            titleHe: job.title,
+                            company: 'Ethosia',
+                            companyVerified: true,
+                            sourceUrl: job.url,
+                        });
+                    }
+
+                    if (jobs.length > 0) break;
+                } catch (navError) {
+                    logger.debug(`Ethosia: ${url} failed: ${navError.message}`);
                 }
-
-                if (pageJobs.length === 0) break;
-                await delay(this.delayBetweenPages);
             }
         } finally {
             await browser.close();
         }
 
-        logger.info(`Ethosia: Scraped ${jobs.length} jobs`);
+        if (jobs.length === 0) {
+            logger.warn('Ethosia: Site has SSL/access issues, no jobs scraped');
+        } else {
+            logger.info(`Ethosia: Scraped ${jobs.length} jobs`);
+        }
+
         return jobs;
     }
 }
